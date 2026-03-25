@@ -3,292 +3,209 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>SiteLog — Civil POI Recorder</title>
+<title>SiteLog — Civil POI</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-  const SHEET_ID    = '1s5eYfgA5OA3QqyiPDTgaTOUOE392SXATYGZ0Z3sJ6_8';
-  const API_KEY     = 'AIzaSyA9hCY0rYvXk6y-7ZSY36UkXotaDxH8mXM';
-  const CLIENT_ID   = '750409445706-7vtdtg13n8r69lm51bpjnlsnevsku00l.apps.googleusercontent.com';
-  const SCOPES      = 'https://www.googleapis.com/auth/spreadsheets';
-  const SHEET_NAME  = 'POI_Log';
-  const META_SHEET  = 'AppMeta';
+  const SHEET_ID   = '1s5eYfgA5OA3QqyiPDTgaTOUOE392SXATYGZ0Z3sJ6_8';
+  const CLIENT_ID  = '750409445706-7vtdtg13n8r69lm51bpjnlsnevsku00l.apps.googleusercontent.com';
+  const API_KEY    = 'AIzaSyA9hCY0rYvXk6y-7ZSY36UkXotaDxH8mXM';
+  const SCOPES     = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+  const LOG_SHEET  = 'POI_Log';
+  const META_SHEET = 'AppMeta';
+  const FOLDER_NAME = 'civilappdata';
 </script>
 
 <style>
 :root {
-  --bg:        #0d1117;
-  --surf:      #161d2b;
-  --surf2:     #1c2538;
-  --surf3:     #222e44;
-  --border:    #2a3a56;
-  --accent:    #f5a623;
-  --accentd:   rgba(245,166,35,0.1);
-  --teal:      #00d4a8;
-  --text:      #e2eaf8;
-  --text2:     #6e82a8;
-  --red:       #f0503a;
-  --green:     #00d4a8;
-  --blue:      #4da6ff;
-  --purple:    #a78bfa;
-  --r:         12px;
-  --mono:      'IBM Plex Mono', monospace;
-  --sans:      'Barlow', sans-serif;
+  --bg:#0d1117; --surf:#161d2b; --surf2:#1c2538; --surf3:#222e44;
+  --border:#2a3a56; --accent:#f5a623; --accd:rgba(245,166,35,.1);
+  --teal:#00d4a8; --text:#e2eaf8; --text2:#6e82a8;
+  --red:#f0503a; --green:#00d4a8; --blue:#4da6ff; --purple:#a78bfa;
+  --r:12px; --mono:'IBM Plex Mono',monospace; --sans:'Barlow',sans-serif;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
 
-/* ── HEADER ── */
-.hdr {
-  background: var(--surf);
-  border-bottom: 2px solid var(--accent);
-  padding: 11px 14px;
-  position: sticky; top: 0; z-index: 200;
-  display: flex; align-items: center; gap: 10px;
-}
-.hdr-brand { font-family: var(--mono); font-weight: 600; font-size: 16px; color: var(--accent); letter-spacing: 1px; line-height: 1; }
-.hdr-brand small { display: block; font-size: 9px; color: var(--text2); letter-spacing: 2.5px; text-transform: uppercase; margin-top: 2px; }
-.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 7px; }
-.cnt-badge { background: var(--accent); color: #000; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-family: var(--mono); }
+.hdr{background:var(--surf);border-bottom:2px solid var(--accent);padding:11px 14px;position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:10px}
+.brand{font-family:var(--mono);font-weight:600;font-size:16px;color:var(--accent);letter-spacing:1px;line-height:1}
+.brand small{display:block;font-size:9px;color:var(--text2);letter-spacing:2.5px;text-transform:uppercase;margin-top:2px}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.cbadge{background:var(--accent);color:#000;font-weight:700;font-size:11px;padding:2px 8px;border-radius:20px;font-family:var(--mono)}
 
-/* SYNC PILL */
-.spill {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 10px; font-family: var(--mono);
-  padding: 4px 9px; border-radius: 20px;
-  border: 1px solid var(--border);
-  cursor: pointer; transition: all 0.2s; white-space: nowrap;
-}
-.spill.ok     { border-color:rgba(0,212,168,.4); color:var(--green); background:rgba(0,212,168,.07); }
-.spill.busy   { border-color:rgba(245,166,35,.4); color:var(--accent); background:var(--accentd); }
-.spill.err    { border-color:rgba(240,80,58,.3);  color:var(--red);   background:rgba(240,80,58,.07); }
-.spill.off    { border-color:var(--border); color:var(--text2); }
-.sdot { width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
-.sdot.pulse { animation: blink 1.1s infinite; }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+.spill{display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);padding:4px 9px;border-radius:20px;border:1px solid var(--border);cursor:pointer;transition:all .2s;white-space:nowrap}
+.spill.ok{border-color:rgba(0,212,168,.4);color:var(--green);background:rgba(0,212,168,.07)}
+.spill.busy{border-color:rgba(245,166,35,.4);color:var(--accent);background:var(--accd)}
+.spill.err{border-color:rgba(240,80,58,.3);color:var(--red);background:rgba(240,80,58,.07)}
+.spill.off{border-color:var(--border);color:var(--text2)}
+.sdot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sdot.pulse{animation:blink 1.1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
-/* ── TABS ── */
-.tabs {
-  display: flex; background: var(--surf);
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 56px; z-index: 199;
-}
-.tbtn {
-  flex: 1; padding: 10px 4px; background: none; border: none;
-  color: var(--text2); font-family: var(--sans); font-size: 11px; font-weight: 700;
-  cursor: pointer; border-bottom: 3px solid transparent;
-  transition: all .2s; text-transform: uppercase; letter-spacing: .8px;
-}
-.tbtn.on { color: var(--accent); border-bottom-color: var(--accent); background: var(--accentd); }
+.tabs{display:flex;background:var(--surf);border-bottom:1px solid var(--border);position:sticky;top:56px;z-index:199}
+.tbtn{flex:1;padding:10px 4px;background:none;border:none;color:var(--text2);font-family:var(--sans);font-size:11px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;text-transform:uppercase;letter-spacing:.8px}
+.tbtn.on{color:var(--accent);border-bottom-color:var(--accent);background:var(--accd)}
 
-/* ── PANELS ── */
-.pnl { display: none; padding: 14px; }
-.pnl.on { display: block; }
+.pnl{display:none;padding:14px}
+.pnl.on{display:block}
 
-/* ── FORM ── */
-.fsec {
-  background: var(--surf); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 14px; margin-bottom: 12px;
-}
-.ftitle {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 2px; color: var(--accent); margin-bottom: 12px;
-  font-family: var(--mono); display: flex; align-items: center; gap: 8px;
-}
-.ftitle::after { content:''; flex:1; height:1px; background:var(--border); }
+.fsec{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.ftitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--accent);margin-bottom:12px;font-family:var(--mono);display:flex;align-items:center;gap:8px}
+.ftitle::after{content:'';flex:1;height:1px;background:var(--border)}
 
-label { display:block; font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px; font-weight:600; }
+label{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;font-weight:600}
+input[type=text],input[type=date],textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:15px;padding:10px 12px;margin-bottom:11px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,.1)}
+textarea{resize:vertical;min-height:78px}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236e82a8' fill='none' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+.oinp{width:100%;background:var(--bg);border:1.5px solid var(--accent);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:15px;padding:10px 12px;margin-top:-5px;margin-bottom:11px;outline:none;display:none}
+.oinp.show{display:block}
 
-input[type=text], input[type=date], textarea, select {
-  width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px;
-  color:var(--text); font-family:var(--sans); font-size:15px;
-  padding:10px 12px; margin-bottom:11px; outline:none;
-  transition:border-color .2s,box-shadow .2s;
-  -webkit-appearance:none; appearance:none;
-}
-input:focus, textarea:focus, select:focus {
-  border-color:var(--accent); box-shadow:0 0 0 3px rgba(245,166,35,.1);
-}
-textarea { resize:vertical; min-height:78px; }
-select {
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236e82a8' fill='none' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat; background-position:right 12px center; padding-right:36px;
-}
-.otherinp {
-  width:100%; background:var(--bg); border:1.5px solid var(--accent); border-radius:8px;
-  color:var(--text); font-family:var(--sans); font-size:15px;
-  padding:10px 12px; margin-top:-5px; margin-bottom:11px; outline:none; display:none;
-}
-.otherinp.show { display:block; }
+.autodt{font-family:var(--mono);font-size:12px;color:var(--teal);background:rgba(0,212,168,.07);border:1px solid rgba(0,212,168,.2);padding:8px 12px;border-radius:7px;margin-bottom:11px}
 
-.autodt {
-  font-family:var(--mono); font-size:12px; color:var(--teal);
-  background:rgba(0,212,168,.07); border:1px solid rgba(0,212,168,.2);
-  padding:8px 12px; border-radius:7px; margin-bottom:11px;
-}
+.pzone{border:2px dashed var(--border);border-radius:var(--r);padding:13px;margin-bottom:11px}
+.pbtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.obtn{background:none;border:1.5px solid var(--accent);color:var(--accent);border-radius:8px;padding:8px 14px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .2s}
+.obtn:active{background:var(--accd)}
+.pprev{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pthumb{position:relative;width:70px;height:70px;border-radius:7px;overflow:hidden;border:1px solid var(--border)}
+.pthumb img{width:100%;height:100%;object-fit:cover}
+.premove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.75);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pupload-status{font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:6px;text-align:center}
 
-/* ── PHOTO ── */
-.pzone { border:2px dashed var(--border); border-radius:var(--r); padding:13px; margin-bottom:11px; }
-.pbtns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
-.obtn {
-  background:none; border:1.5px solid var(--accent); color:var(--accent);
-  border-radius:8px; padding:8px 14px; font-family:var(--sans);
-  font-size:13px; font-weight:600; cursor:pointer;
-  display:flex; align-items:center; gap:5px; transition:background .2s;
-}
-.obtn:active { background:var(--accentd); }
-.pprev { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-.pthumb { position:relative; width:70px; height:70px; border-radius:7px; overflow:hidden; border:1px solid var(--border); }
-.pthumb img { width:100%; height:100%; object-fit:cover; }
-.premove { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.75); border:none; color:#fff; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.fitem{display:flex;align-items:center;gap:8px;background:var(--surf2);border-radius:7px;padding:7px 10px;margin-bottom:6px;font-size:13px}
+.fname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)}
+.fremove{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px}
 
-/* ── FILES ── */
-.fitem { display:flex; align-items:center; gap:8px; background:var(--surf2); border-radius:7px; padding:7px 10px; margin-bottom:6px; font-size:13px; }
-.fname { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2); }
-.fremove { background:none; border:none; color:var(--red); cursor:pointer; font-size:14px; padding:0 4px; }
+.btnp{width:100%;background:var(--accent);color:#000;border:none;border-radius:10px;padding:14px;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:opacity .2s,transform .1s}
+.btnp:active{opacity:.85;transform:scale(.98)}
+.btnp:disabled{opacity:.4;cursor:not-allowed}
+.btnd{background:var(--red);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer}
+.btns{background:var(--green);color:#000;border:none;border-radius:7px;padding:7px 14px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer}
+.btnb{background:var(--blue);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer}
 
-/* ── BUTTONS ── */
-.btnp { width:100%; background:var(--accent); color:#000; border:none; border-radius:10px; padding:14px; font-family:var(--sans); font-size:15px; font-weight:700; cursor:pointer; letter-spacing:.5px; transition:opacity .2s,transform .1s; }
-.btnp:active { opacity:.85; transform:scale(.98); }
-.btnp:disabled { opacity:.4; cursor:not-allowed; }
-.btnd { background:var(--red);   color:#fff; border:none; border-radius:7px; padding:7px 14px; font-family:var(--sans); font-size:13px; font-weight:600; cursor:pointer; }
-.btns { background:var(--green); color:#000; border:none; border-radius:7px; padding:7px 14px; font-family:var(--sans); font-size:13px; font-weight:600; cursor:pointer; }
-.btnb { background:var(--blue);  color:#fff; border:none; border-radius:7px; padding:7px 14px; font-family:var(--sans); font-size:13px; font-weight:600; cursor:pointer; }
+.siscreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;padding:24px;text-align:center}
+.siicon{font-size:48px;margin-bottom:14px}
+.sititle{font-size:20px;font-weight:700;margin-bottom:8px}
+.sisub{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.6;max-width:300px}
+.gbtn{display:flex;align-items:center;gap:12px;background:#fff;color:#333;border:none;border-radius:10px;padding:13px 22px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.35);font-family:var(--sans);transition:transform .1s}
+.gbtn:active{transform:scale(.97)}
+.gbtn img{width:22px;height:22px}
 
-/* ── SIGN-IN SCREEN ── */
-.siscreen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:58vh; padding:24px; text-align:center; }
-.siicon { font-size:50px; margin-bottom:14px; }
-.sititle { font-size:20px; font-weight:700; margin-bottom:8px; }
-.sisub { font-size:14px; color:var(--text2); margin-bottom:26px; line-height:1.6; max-width:300px; }
-.gbtn { display:flex; align-items:center; gap:12px; background:#fff; color:#333; border:none; border-radius:10px; padding:13px 22px; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 2px 12px rgba(0,0,0,.35); font-family:var(--sans); transition:transform .1s; }
-.gbtn:active { transform:scale(.97); }
-.gbtn img { width:22px; height:22px; }
+.vctrl{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.vtog{display:flex;background:var(--surf);border-radius:8px;border:1px solid var(--border);overflow:hidden}
+.vtog button{background:none;border:none;color:var(--text2);padding:7px 12px;cursor:pointer;font-size:14px;transition:all .2s}
+.vtog button.on{background:var(--accent);color:#000}
+.sbox{flex:1;min-width:110px;background:var(--surf);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:14px;padding:7px 11px;outline:none}
+.sbox:focus{border-color:var(--accent)}
+.fdd{background:var(--surf);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px;padding:7px 10px;outline:none;-webkit-appearance:none}
 
-/* ── VIEW ── */
-.vctrl { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
-.vtog { display:flex; background:var(--surf); border-radius:8px; border:1px solid var(--border); overflow:hidden; }
-.vtog button { background:none; border:none; color:var(--text2); padding:7px 12px; cursor:pointer; font-size:14px; transition:all .2s; }
-.vtog button.on { background:var(--accent); color:#000; }
-.sbox { flex:1; min-width:110px; background:var(--surf); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:var(--sans); font-size:14px; padding:7px 11px; outline:none; }
-.sbox:focus { border-color:var(--accent); }
-.fdd { background:var(--surf); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:var(--sans); font-size:12px; padding:7px 10px; outline:none; -webkit-appearance:none; }
+.card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:13px;margin-bottom:11px;border-left:3px solid var(--border)}
+.card.cl-Defect{border-left-color:#f0503a}.card.cl-Incident{border-left-color:#e05c2a}
+.card.cl-Rectification{border-left-color:#00d4a8}.card.cl-Note{border-left-color:#4da6ff}
+.card.cl-Information{border-left-color:#a78bfa}.card.cl-Other{border-left-color:#6e82a8}
+.chdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
+.pbadge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:3px 7px;border-radius:4px}
+.b-Defect{background:rgba(240,80,58,.13);color:#f0503a;border:1px solid rgba(240,80,58,.3)}
+.b-Incident{background:rgba(224,92,42,.13);color:#e05c2a;border:1px solid rgba(224,92,42,.3)}
+.b-Rectification{background:rgba(0,212,168,.12);color:#00d4a8;border:1px solid rgba(0,212,168,.3)}
+.b-Note{background:rgba(77,166,255,.12);color:#4da6ff;border:1px solid rgba(77,166,255,.3)}
+.b-Information{background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.3)}
+.b-Other{background:rgba(110,130,168,.1);color:#6e82a8;border:1px solid rgba(110,130,168,.25)}
+.cid{font-family:var(--mono);font-size:10px;color:var(--text2)}
+.cloc{font-size:13px;font-weight:600;margin-bottom:4px}
+.cdesc{font-size:13px;color:var(--text2);line-height:1.45;margin-bottom:7px}
+.cphotos{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.cphoto{width:56px;height:56px;border-radius:5px;overflow:hidden;border:1px solid var(--border);cursor:pointer}
+.cphoto img{width:100%;height:100%;object-fit:cover}
+.cfiles{margin-bottom:6px}
+.cfile-link{font-size:12px;color:var(--blue);display:block;margin-bottom:2px;text-decoration:none}
+.cmeta{font-family:var(--mono);font-size:10px;color:var(--text2);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.cacts{display:flex;gap:7px}
 
-/* ── CARDS ── */
-.card { background:var(--surf); border:1px solid var(--border); border-radius:var(--r); padding:13px; margin-bottom:11px; border-left:3px solid var(--border); }
-.card.cl-Defect          { border-left-color:#f0503a; }
-.card.cl-Incident        { border-left-color:#e05c2a; }
-.card.cl-Rectification   { border-left-color:#00d4a8; }
-.card.cl-Note            { border-left-color:#4da6ff; }
-.card.cl-Information     { border-left-color:#a78bfa; }
-.card.cl-Other           { border-left-color:#6e82a8; }
-.chdr { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:7px; }
-.pbadge { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; padding:3px 7px; border-radius:4px; }
-.b-Defect       { background:rgba(240,80,58,.13); color:#f0503a; border:1px solid rgba(240,80,58,.3); }
-.b-Incident     { background:rgba(224,92,42,.13);  color:#e05c2a; border:1px solid rgba(224,92,42,.3); }
-.b-Rectification{ background:rgba(0,212,168,.12);  color:#00d4a8; border:1px solid rgba(0,212,168,.3); }
-.b-Note         { background:rgba(77,166,255,.12);  color:#4da6ff; border:1px solid rgba(77,166,255,.3); }
-.b-Information  { background:rgba(167,139,250,.12); color:#a78bfa; border:1px solid rgba(167,139,250,.3); }
-.b-Other        { background:rgba(110,130,168,.1);  color:#6e82a8; border:1px solid rgba(110,130,168,.25); }
-.cid   { font-family:var(--mono); font-size:10px; color:var(--text2); }
-.cloc  { font-size:13px; font-weight:600; margin-bottom:4px; }
-.cdesc { font-size:13px; color:var(--text2); line-height:1.45; margin-bottom:7px; }
-.cphotos { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
-.cphoto  { width:52px; height:52px; border-radius:5px; overflow:hidden; border:1px solid var(--border); cursor:pointer; }
-.cphoto img { width:100%; height:100%; object-fit:cover; }
-.cfiles { margin-bottom:6px; }
-.cfile-link { font-size:12px; color:var(--blue); display:block; margin-bottom:2px; }
-.cmeta { font-family:var(--mono); font-size:10px; color:var(--text2); display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
-.cacts { display:flex; gap:7px; }
+.twrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--surf2);color:var(--accent);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:9px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.tdacts{display:flex;gap:5px}
 
-/* ── TABLE ── */
-.twrap { overflow-x:auto; border-radius:var(--r); border:1px solid var(--border); }
-table { width:100%; border-collapse:collapse; font-size:12px; }
-th { background:var(--surf2); color:var(--accent); font-family:var(--mono); font-size:9px; text-transform:uppercase; letter-spacing:1px; padding:9px 10px; text-align:left; white-space:nowrap; border-bottom:1px solid var(--border); }
-td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
-tr:last-child td { border-bottom:none; }
-.tdacts { display:flex; gap:5px; }
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:300;align-items:flex-end;justify-content:center}
+.moverlay.show{display:flex}
+.modal{background:var(--surf);border-radius:16px 16px 0 0;padding:18px 16px 32px;width:100%;max-height:92vh;overflow-y:auto;border-top:3px solid var(--accent)}
+.mtitle{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.mclose{background:var(--surf2);border:none;color:var(--text2);border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
-/* ── MODAL ── */
-.moverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:300; align-items:flex-end; justify-content:center; }
-.moverlay.show { display:flex; }
-.modal { background:var(--surf); border-radius:16px 16px 0 0; padding:18px 16px 32px; width:100%; max-height:92vh; overflow-y:auto; border-top:3px solid var(--accent); }
-.mtitle { font-size:15px; font-weight:700; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
-.mclose { background:var(--surf2); border:none; color:var(--text2); border-radius:50%; width:28px; height:28px; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:400;align-items:center;justify-content:center}
+.lb.show{display:flex}
+.lb img{max-width:95vw;max-height:90vh;border-radius:8px}
+.lbx{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:34px;height:34px;font-size:17px;cursor:pointer}
 
-/* ── LIGHTBOX ── */
-.lb { display:none; position:fixed; inset:0; background:rgba(0,0,0,.95); z-index:400; align-items:center; justify-content:center; }
-.lb.show { display:flex; }
-.lb img { max-width:95vw; max-height:90vh; border-radius:8px; }
-.lbx { position:absolute; top:14px; right:14px; background:rgba(255,255,255,.15); border:none; color:#fff; border-radius:50%; width:34px; height:34px; font-size:17px; cursor:pointer; }
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.sbox2{background:var(--surf2);border-radius:9px;padding:12px;text-align:center}
+.snum{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--accent)}
+.slbl{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.ecard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.etitle{font-size:14px;font-weight:700;margin-bottom:5px}
+.edesc{font-size:12px;color:var(--text2);margin-bottom:11px;line-height:1.5}
 
-/* ── EXPORT ── */
-.sgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
-.sbox2 { background:var(--surf2); border-radius:9px; padding:12px; text-align:center; }
-.snum { font-family:var(--mono); font-size:22px; font-weight:600; color:var(--accent); }
-.slbl { font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
-.ecard { background:var(--surf); border:1px solid var(--border); border-radius:var(--r); padding:14px; margin-bottom:12px; }
-.etitle { font-size:14px; font-weight:700; margin-bottom:5px; }
-.edesc { font-size:12px; color:var(--text2); margin-bottom:11px; line-height:1.5; }
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);font-weight:700;font-size:13px;padding:10px 22px;border-radius:30px;z-index:999;transition:transform .3s ease;white-space:nowrap;background:var(--green);color:#000;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.e{background:var(--red);color:#fff}
+.toast.w{background:var(--accent);color:#000}
 
-/* ── TOAST ── */
-.toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(80px); font-weight:700; font-size:13px; padding:10px 22px; border-radius:30px; z-index:999; transition:transform .3s ease; white-space:nowrap; background:var(--green); color:#000; }
-.toast.show { transform:translateX(-50%) translateY(0); }
-.toast.e { background:var(--red); color:#fff; }
-.toast.w { background:var(--accent); color:#000; }
+.empty{text-align:center;padding:40px 16px;color:var(--text2);font-size:13px}
+.empty .icon{font-size:36px;margin-bottom:10px}
+input[type=file]{display:none}
 
-.empty { text-align:center; padding:40px 16px; color:var(--text2); font-size:13px; }
-.empty .icon { font-size:36px; margin-bottom:10px; }
-input[type=file] { display:none; }
+.progress-bar{height:3px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden;display:none}
+.progress-bar.show{display:block}
+.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s;width:0%}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <div class="hdr">
   <div>
-    <div class="hdr-brand">SiteLog <small>Civil POI · Sheets Sync</small></div>
+    <div class="brand">SiteLog <small>Civil POI · Sheets Sync</small></div>
   </div>
-  <div class="hdr-right">
+  <div class="hdr-r">
     <div class="spill off" id="spill" onclick="handleSyncClick()">
       <div class="sdot" id="sdot"></div>
       <span id="slabel">Sign in</span>
     </div>
-    <div class="cnt-badge" id="cntBadge">0</div>
+    <div class="cbadge" id="cntBadge">0</div>
   </div>
 </div>
 
-<!-- TABS -->
 <div class="tabs">
-  <button class="tbtn on"  id="t-add"    onclick="goTab('add')">➕ Add</button>
-  <button class="tbtn"     id="t-view"   onclick="goTab('view')">📋 View</button>
-  <button class="tbtn"     id="t-export" onclick="goTab('export')">📤 Export</button>
+  <button class="tbtn on" id="t-add"    onclick="goTab('add')">➕ Add</button>
+  <button class="tbtn"    id="t-view"   onclick="goTab('view')">📋 View</button>
+  <button class="tbtn"    id="t-export" onclick="goTab('export')">📤 Export</button>
 </div>
 
-<!-- ═══════ ADD ═══════ -->
+<!-- ADD -->
 <div id="pnl-add" class="pnl on">
-  <!-- Sign-in prompt -->
   <div id="siPrompt" class="siscreen">
     <div class="siicon">📋</div>
     <div class="sititle">Sign in to start</div>
-    <div class="sisub">Your entries sync live to Google Sheets — open on any device.</div>
+    <div class="sisub">Entries sync live to Google Sheets — open on any device, any time.</div>
     <button class="gbtn" onclick="signIn()">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
       Sign in with Google
     </button>
   </div>
 
-  <!-- Entry Form -->
   <div id="entryForm" style="display:none">
     <div class="fsec">
       <div class="ftitle">📍 Location & POI</div>
       <label>Location / Sector</label>
-      <select id="selLoc" onchange="chkOther('selLoc','inpLocOther')"></select>
-      <input type="text" class="otherinp" id="inpLocOther" placeholder="Type new location / sector…">
-
+      <select id="selLoc" onchange="chkOther('selLoc','inpLocO')"></select>
+      <input type="text" class="oinp" id="inpLocO" placeholder="Type new location…">
       <label>POI Type</label>
-      <select id="selPOI" onchange="chkOther('selPOI','inpPOIOther')"></select>
-      <input type="text" class="otherinp" id="inpPOIOther" placeholder="Custom POI type…">
+      <select id="selPOI" onchange="chkOther('selPOI','inpPOIO')"></select>
+      <input type="text" class="oinp" id="inpPOIO" placeholder="Custom POI type…">
     </div>
 
     <div class="fsec">
@@ -302,20 +219,22 @@ input[type=file] { display:none; }
     </div>
 
     <div class="fsec">
-      <div class="ftitle">📸 Photos</div>
+      <div class="ftitle">📸 Photos <span style="font-size:9px;color:var(--text2);font-weight:400;text-transform:none;letter-spacing:0">(saved to Google Drive → civilappdata folder)</span></div>
       <div class="pzone">
         <div class="pbtns">
           <button class="obtn" onclick="document.getElementById('inCam').click()">📷 Camera</button>
           <button class="obtn" onclick="document.getElementById('inGal').click()">🖼️ Gallery</button>
         </div>
         <div class="pprev" id="pprev"></div>
+        <div class="pupload-status" id="photoStatus"></div>
+        <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
       </div>
       <input type="file" id="inCam" accept="image/*" capture="environment" multiple onchange="addPhotos(this)">
       <input type="file" id="inGal" accept="image/*" multiple onchange="addPhotos(this)">
     </div>
 
     <div class="fsec">
-      <div class="ftitle">📎 Other Files</div>
+      <div class="ftitle">📎 Other Files <span style="font-size:9px;color:var(--text2);font-weight:400;text-transform:none;letter-spacing:0">(saved to Google Drive)</span></div>
       <button class="obtn" style="margin-bottom:8px" onclick="document.getElementById('inFile').click()">📂 Attach Files</button>
       <div id="filelist"></div>
       <input type="file" id="inFile" multiple onchange="addFiles(this)">
@@ -326,7 +245,7 @@ input[type=file] { display:none; }
   </div>
 </div>
 
-<!-- ═══════ VIEW ═══════ -->
+<!-- VIEW -->
 <div id="pnl-view" class="pnl">
   <div id="viewSI" class="siscreen" style="display:none">
     <div class="siicon">👁️</div>
@@ -343,15 +262,13 @@ input[type=file] { display:none; }
         <button id="vtable" onclick="setView('table')">📊</button>
       </div>
       <input type="text" class="sbox" id="searchBox" placeholder="Search…" oninput="renderEntries()">
-      <select class="fdd" id="fltPOI" onchange="renderEntries()">
-        <option value="">All POI</option>
-      </select>
+      <select class="fdd" id="fltPOI" onchange="renderEntries()"><option value="">All POI</option></select>
     </div>
     <div id="eContainer"></div>
   </div>
 </div>
 
-<!-- ═══════ EXPORT ═══════ -->
+<!-- EXPORT -->
 <div id="pnl-export" class="pnl">
   <div class="sgrid">
     <div class="sbox2"><div class="snum" id="stTotal">0</div><div class="slbl">Total</div></div>
@@ -361,22 +278,27 @@ input[type=file] { display:none; }
   </div>
   <div class="ecard">
     <div class="etitle">📊 Export Excel (.xlsx)</div>
-    <div class="edesc">Downloads all entries as an Excel file from your Google Sheets data.</div>
+    <div class="edesc">All entries downloaded as Excel. Photo links included.</div>
     <button class="btnp" style="font-size:14px;padding:12px" onclick="exportXLSX()">⬇️ Download .xlsx</button>
   </div>
   <div class="ecard">
     <div class="etitle">📄 Export CSV</div>
-    <div class="edesc">Comma-separated format — opens in Excel, Sheets, or any app.</div>
+    <div class="edesc">Opens in Excel, Google Sheets, or any spreadsheet app.</div>
     <button class="btnp" style="font-size:14px;padding:12px;background:var(--blue)" onclick="exportCSV()">⬇️ Download .csv</button>
   </div>
   <div class="ecard">
-    <div class="etitle">☁️ Google Sheets</div>
-    <div class="edesc">Your live database. Open directly in Google Sheets to view all rows.</div>
+    <div class="etitle">☁️ Open Google Sheet</div>
+    <div class="edesc">View your live database directly in Google Sheets.</div>
     <button class="btnb" onclick="openSheet()">🔗 Open Sheet</button>
+  </div>
+  <div class="ecard">
+    <div class="etitle">📁 Open Drive Folder</div>
+    <div class="edesc">Photos and files are saved in the <strong>civilappdata</strong> folder on your Google Drive.</div>
+    <button class="btnb" onclick="openDriveFolder()">📂 Open Drive Folder</button>
   </div>
   <div class="ecard" style="border-color:rgba(240,80,58,.3)">
     <div class="etitle" style="color:var(--red)">🗑️ Clear Local Cache</div>
-    <div class="edesc">Clears cached data on this device. Google Sheets data unaffected.</div>
+    <div class="edesc">Clears data cached on this device. Sheets & Drive data unaffected.</div>
     <button class="btnd" onclick="clearCache()">Clear Cache</button>
   </div>
 </div>
@@ -386,11 +308,11 @@ input[type=file] { display:none; }
   <div class="modal">
     <div class="mtitle">Edit Entry <button class="mclose" onclick="closeModal()">✕</button></div>
     <label>Location</label>
-    <select id="eLoc" onchange="chkOther('eLoc','eLocOther')"></select>
-    <input type="text" class="otherinp" id="eLocOther" placeholder="Enter location…">
+    <select id="eLoc" onchange="chkOther('eLoc','eLocO')"></select>
+    <input type="text" class="oinp" id="eLocO" placeholder="Enter location…">
     <label>POI Type</label>
-    <select id="ePOI" onchange="chkOther('ePOI','ePOIOther')"></select>
-    <input type="text" class="otherinp" id="ePOIOther" placeholder="Custom POI type…">
+    <select id="ePOI" onchange="chkOther('ePOI','ePOIO')"></select>
+    <input type="text" class="oinp" id="ePOIO" placeholder="Custom POI type…">
     <label>Description</label>
     <textarea id="eDesc"></textarea>
     <label>Date</label>
@@ -408,399 +330,426 @@ input[type=file] { display:none; }
   <img id="lbImg" src="" alt="">
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer onload="gapiReady()"></script>
 
 <script>
-// ════════════════════════════════════
-//  STATE
-// ════════════════════════════════════
-let entries     = JSON.parse(localStorage.getItem('sl_entries')  || '[]');
-let customLocs  = JSON.parse(localStorage.getItem('sl_locs')     || '[]');
-let customPOIs  = JSON.parse(localStorage.getItem('sl_pois')     || '[]');
-let accessToken = null;
-let isSignedIn  = false;
-let pendPhotos  = [];
-let pendFiles   = [];
-let editIdx     = -1;
-let viewMode    = 'card';
-let gapiInited  = false;
-let tokenExpiry = 0;
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let entries    = JSON.parse(localStorage.getItem('sl4_entries') || '[]');
+let customLocs = JSON.parse(localStorage.getItem('sl4_locs')    || '[]');
+let customPOIs = JSON.parse(localStorage.getItem('sl4_pois')    || '[]');
+let driveFolderId = localStorage.getItem('sl4_folderid') || null;
+
+let tokenClient  = null;
+let accessToken  = null;
+let isSignedIn   = false;
+let gapiReady_   = false;
+let gisReady_    = false;
+
+let pendPhotos = []; // {name, file, dataUrl, driveId, driveLink}
+let pendFiles  = []; // {name, file, driveId, driveLink}
+let editIdx    = -1;
+let viewMode   = 'card';
 
 const DEF_LOCS = ['Sec 51','Sec 50','Sec 76','Sec 101'];
 const DEF_POIS = ['Defect','Incident','Rectification Work','Note','Information'];
 
-// Sheets column order
-const COLS = ['ID','Location','POI_Type','Description','Date','Entry_DateTime','Photos','Files','RowID'];
-
-// ════════════════════════════════════
-//  INIT
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  setToday();
-  startClock();
-  updateBadge();
-  updateStats();
-  rebuildDDs();
+  setToday(); startClock(); updateBadge(); updateStats(); rebuildDDs();
 });
 
 function gapiReady() {
   gapi.load('client', async () => {
     await gapi.client.init({
       apiKey: API_KEY,
-      discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+      discoveryDocs: [
+        'https://sheets.googleapis.com/$discovery/rest?version=v4',
+        'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
+      ]
     });
-    gapiInited = true;
-    // Try silent token refresh
-    tryAutoSignIn();
+    gapiReady_ = true;
+    maybeInitGIS();
   });
 }
 
-function tryAutoSignIn() {
-  // Google will silently re-auth if user previously consented
+function maybeInitGIS() {
+  // GIS script calls this once loaded
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: handleTokenResponse
+  });
+  gisReady_ = true;
+  // Try silent sign-in using stored token hint
+  const stored = localStorage.getItem('sl4_token');
+  if (stored) {
+    try {
+      const t = JSON.parse(stored);
+      if (t.expiry > Date.now()) {
+        accessToken = t.token;
+        gapi.client.setToken({ access_token: accessToken });
+        onSignedIn();
+        return;
+      }
+    } catch(e) {}
+  }
+  // Try silent prompt
+  silentSignIn();
+}
+
+function silentSignIn() {
+  if (!gisReady_) return;
   const client = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
     prompt: '',
+    hint: localStorage.getItem('sl4_email') || '',
     callback: (resp) => {
-      if (resp.error) return; // silent fail = user must tap
-      accessToken = resp.access_token;
-      tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
-      gapi.client.setToken({ access_token: accessToken });
-      onSignedIn();
+      if (resp.error || !resp.access_token) return;
+      handleTokenResponse(resp);
     }
   });
   client.requestAccessToken({ prompt: '' });
 }
 
-// ════════════════════════════════════
-//  AUTH
-// ════════════════════════════════════
+function handleTokenResponse(resp) {
+  if (resp.error) { showToast('Sign-in error: ' + resp.error, 'e'); return; }
+  accessToken = resp.access_token;
+  const expiry = Date.now() + ((resp.expires_in || 3600) - 120) * 1000;
+  localStorage.setItem('sl4_token', JSON.stringify({ token: accessToken, expiry }));
+  gapi.client.setToken({ access_token: accessToken });
+  onSignedIn();
+}
+
 function signIn() {
-  if (!gapiInited) { showToast('Loading… try again in a moment','w'); return; }
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) { showToast('Sign-in failed: ' + resp.error,'e'); return; }
-      accessToken = resp.access_token;
-      tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
-      gapi.client.setToken({ access_token: accessToken });
-      onSignedIn();
-    }
+  if (!gapiReady_ || !gisReady_) {
+    showToast('Still loading, try again…', 'w'); return;
+  }
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
+}
+
+async function refreshToken() {
+  const stored = localStorage.getItem('sl4_token');
+  if (stored) {
+    try {
+      const t = JSON.parse(stored);
+      if (t.expiry > Date.now()) {
+        accessToken = t.token;
+        gapi.client.setToken({ access_token: accessToken });
+        return true;
+      }
+    } catch(e) {}
+  }
+  return new Promise(resolve => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: SCOPES, prompt: '',
+      hint: localStorage.getItem('sl4_email') || '',
+      callback: (resp) => {
+        if (resp.error || !resp.access_token) { resolve(false); return; }
+        accessToken = resp.access_token;
+        const expiry = Date.now() + ((resp.expires_in||3600)-120)*1000;
+        localStorage.setItem('sl4_token', JSON.stringify({token:accessToken,expiry}));
+        gapi.client.setToken({access_token:accessToken});
+        resolve(true);
+      }
+    });
+    client.requestAccessToken({prompt:''});
   });
-  client.requestAccessToken();
 }
 
 function handleSyncClick() {
   if (!isSignedIn) { signIn(); return; }
-  refreshFromSheets();
+  loadFromSheets();
 }
 
-async function ensureToken() {
-  if (Date.now() > tokenExpiry) {
-    // Token expired — request new one silently
-    await new Promise(resolve => {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID, scope: SCOPES, prompt: '',
-        callback: (resp) => {
-          if (!resp.error) {
-            accessToken = resp.access_token;
-            tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
-            gapi.client.setToken({ access_token: accessToken });
-          }
-          resolve();
-        }
-      });
-      client.requestAccessToken({ prompt: '' });
-    });
-  }
-}
-
+// ══════════════════════════════════════
+// SIGNED IN
+// ══════════════════════════════════════
 async function onSignedIn() {
   isSignedIn = true;
   setSyncState('busy','Loading…');
-  showFormUI(true);
+  showUI(true);
   rebuildDDs();
+
+  // Get user email for hint
+  try {
+    const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const d = await info.json();
+    if (d.email) localStorage.setItem('sl4_email', d.email);
+  } catch(e) {}
+
   await ensureSheetSetup();
-  await refreshFromSheets();
-  setSyncState('ok','Synced');
-  renderEntries();
-  updateBadge();
-  updateStats();
+  await loadFromSheets();
 
   // Auto-refresh token every 45 min
-  setInterval(async () => { await ensureToken(); }, 45 * 60 * 1000);
+  setInterval(refreshToken, 45 * 60 * 1000);
 }
 
-function showFormUI(on) {
+function showUI(on) {
   document.getElementById('siPrompt').style.display    = on ? 'none' : 'flex';
   document.getElementById('entryForm').style.display   = on ? 'block' : 'none';
   document.getElementById('viewSI').style.display      = on ? 'none' : 'flex';
   document.getElementById('viewContent').style.display = on ? 'block' : 'none';
 }
 
-// ════════════════════════════════════
-//  SHEETS SETUP
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// SHEET SETUP
+// ══════════════════════════════════════
 async function ensureSheetSetup() {
   try {
-    await ensureToken();
-    // Check existing sheets
     const meta = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
-    const sheetNames = meta.result.sheets.map(s => s.properties.title);
-
-    const requests = [];
-    if (!sheetNames.includes(SHEET_NAME)) {
-      requests.push({ addSheet: { properties: { title: SHEET_NAME } } });
-    }
-    if (!sheetNames.includes(META_SHEET)) {
-      requests.push({ addSheet: { properties: { title: META_SHEET } } });
-    }
-    if (requests.length) {
+    const names = meta.result.sheets.map(s => s.properties.title);
+    const reqs  = [];
+    if (!names.includes(LOG_SHEET))  reqs.push({addSheet:{properties:{title:LOG_SHEET}}});
+    if (!names.includes(META_SHEET)) reqs.push({addSheet:{properties:{title:META_SHEET}}});
+    if (reqs.length) {
       await gapi.client.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: SHEET_ID,
-        resource: { requests }
+        spreadsheetId: SHEET_ID, resource: { requests: reqs }
       });
     }
-
-    // Ensure header row
-    const hdrCheck = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: `${SHEET_NAME}!A1:I1`
+    // Header
+    const hdr = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: `${LOG_SHEET}!A1:J1`
     });
-    if (!hdrCheck.result.values || !hdrCheck.result.values[0] || hdrCheck.result.values[0][0] !== 'ID') {
+    if (!hdr.result.values?.[0]?.[0]) {
       await gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID,
-        range: `${SHEET_NAME}!A1`,
+        spreadsheetId: SHEET_ID, range: `${LOG_SHEET}!A1`,
         valueInputOption: 'RAW',
-        resource: { values: [COLS] }
+        resource: { values: [['ID','Location','POI_Type','Description','Date','Entry_DateTime','Photo_Links','File_Links','Drive_Folder','Row_ID']] }
       });
     }
-  } catch(e) {
-    console.error('Sheet setup error', e);
-  }
+    // Ensure Drive folder
+    await getOrCreateFolder();
+  } catch(e) { console.error('Sheet setup', e); }
 }
 
-// ════════════════════════════════════
-//  READ FROM SHEETS
-// ════════════════════════════════════
-async function refreshFromSheets() {
+// ══════════════════════════════════════
+// GOOGLE DRIVE FOLDER
+// ══════════════════════════════════════
+async function getOrCreateFolder() {
+  if (driveFolderId) return driveFolderId;
+  await refreshToken();
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name%3D'${FOLDER_NAME}'+and+mimeType%3D'application%2Fvnd.google-apps.folder'+and+trashed%3Dfalse&fields=files(id,name)`,
+    { headers: { Authorization: 'Bearer ' + accessToken } }
+  );
+  const data = await res.json();
+  if (data.files && data.files.length > 0) {
+    driveFolderId = data.files[0].id;
+  } else {
+    const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+    });
+    const cd = await cr.json();
+    driveFolderId = cd.id;
+  }
+  localStorage.setItem('sl4_folderid', driveFolderId);
+  return driveFolderId;
+}
+
+// ══════════════════════════════════════
+// UPLOAD FILE TO DRIVE
+// ══════════════════════════════════════
+async function uploadFileToDrive(file, filename) {
+  await refreshToken();
+  const folderId = await getOrCreateFolder();
+
+  const meta = JSON.stringify({ name: filename, parents: [folderId] });
+  const form = new FormData();
+  form.append('metadata', new Blob([meta], { type: 'application/json' }));
+  form.append('file', file);
+
+  const res = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink,webContentLink',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + accessToken }, body: form }
+  );
+  const data = await res.json();
+  // Make file publicly viewable so link works
+  await fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' })
+  });
+  return { id: data.id, link: data.webViewLink, directLink: `https://drive.google.com/uc?id=${data.id}` };
+}
+
+// ══════════════════════════════════════
+// LOAD FROM SHEETS
+// ══════════════════════════════════════
+async function loadFromSheets() {
   try {
-    await ensureToken();
-    setSyncState('busy','Loading…');
+    setSyncState('busy','Syncing…');
+    await refreshToken();
 
     const res = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: `${SHEET_NAME}!A2:I9999`
+      spreadsheetId: SHEET_ID, range: `${LOG_SHEET}!A2:J9999`
     });
 
     const rows = res.result.values || [];
     entries = rows.map(r => ({
-      id:            r[0] || '',
-      location:      r[1] || '',
-      poi:           r[2] || '',
-      description:   r[3] || '',
-      date:          r[4] || '',
-      entryDateTime: r[5] || '',
-      photos:        safeParseJSON(r[6], []),
-      files:         safeParseJSON(r[7], []),
-      rowId:         r[8] || r[0] || ''
-    })).filter(e => e.id);
+      id:            r[0]||'',
+      location:      r[1]||'',
+      poi:           r[2]||'',
+      description:   r[3]||'',
+      date:          r[4]||'',
+      entryDateTime: r[5]||'',
+      photoLinks:    safeJSON(r[6],[]),
+      fileLinks:     safeJSON(r[7],[]),
+      driveFolder:   r[8]||'',
+      rowId:         r[9]||r[0]||''
+    })).filter(e=>e.id);
 
-    // Load meta (custom locs/pois)
+    // Load meta
     try {
       const m = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID,
-        range: `${META_SHEET}!A1:B200`
+        spreadsheetId: SHEET_ID, range: `${META_SHEET}!A:B`
       });
       const mrows = m.result.values || [];
       customLocs = mrows.filter(r=>r[0]==='loc').map(r=>r[1]).filter(Boolean);
       customPOIs = mrows.filter(r=>r[0]==='poi').map(r=>r[1]).filter(Boolean);
-      localStorage.setItem('sl_locs', JSON.stringify(customLocs));
-      localStorage.setItem('sl_pois', JSON.stringify(customPOIs));
+      localStorage.setItem('sl4_locs', JSON.stringify(customLocs));
+      localStorage.setItem('sl4_pois', JSON.stringify(customPOIs));
     } catch(e) {}
 
-    localStorage.setItem('sl_entries', JSON.stringify(entries));
+    localStorage.setItem('sl4_entries', JSON.stringify(entries));
     rebuildDDs();
-    setSyncState('ok','Synced');
-    showToast('☁️ Loaded from Sheets');
+    renderEntries();
+    updateBadge();
+    updateStats();
+    setSyncState('ok', 'Synced ✓');
+    showToast('☁️ Data loaded from Sheets');
   } catch(e) {
-    console.error('Refresh error', e);
-    setSyncState('err','Sync error');
-    showToast('Sync failed — using local cache','w');
+    console.error('Load error:', e);
+    setSyncState('err','Load failed');
+    showToast('Load failed — check connection','e');
   }
 }
 
-function safeParseJSON(str, fallback) {
-  try { return JSON.parse(str || '[]'); } catch { return fallback; }
-}
+function safeJSON(s, fb) { try { return JSON.parse(s||'[]'); } catch { return fb; } }
 
-// ════════════════════════════════════
-//  APPEND ROW TO SHEETS
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// APPEND TO SHEETS
+// ══════════════════════════════════════
 async function appendToSheet(entry) {
-  await ensureToken();
+  await refreshToken();
   const row = [
-    entry.id,
-    entry.location,
-    entry.poi,
-    entry.description,
-    entry.date,
+    entry.id, entry.location, entry.poi, entry.description, entry.date,
     entry.entryDateTime,
-    JSON.stringify(entry.photos),
-    JSON.stringify(entry.files),
+    JSON.stringify(entry.photoLinks||[]),
+    JSON.stringify(entry.fileLinks||[]),
+    `https://drive.google.com/drive/folders/${driveFolderId}`,
     entry.id
   ];
-  await gapi.client.sheets.spreadsheets.values.append({
+  const res = await gapi.client.sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: `${SHEET_NAME}!A:I`,
+    range: `${LOG_SHEET}!A:J`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     resource: { values: [row] }
   });
+  return res;
 }
 
-// ════════════════════════════════════
-//  UPDATE ROW IN SHEETS
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// UPDATE ROW
+// ══════════════════════════════════════
 async function updateSheetRow(entry) {
-  await ensureToken();
-  // Find the row number by ID
+  await refreshToken();
   const res = await gapi.client.sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: `${SHEET_NAME}!A:A`
+    spreadsheetId: SHEET_ID, range: `${LOG_SHEET}!A:A`
   });
   const rows = res.result.values || [];
-  const rowNum = rows.findIndex(r => r[0] === entry.id);
-  if (rowNum < 1) { await appendToSheet(entry); return; }
-
-  const sheetRow = rowNum + 1; // 1-indexed, +1 for header
+  const ri = rows.findIndex(r=>r[0]===entry.id);
+  if (ri < 1) { await appendToSheet(entry); return; }
   const row = [
-    entry.id, entry.location, entry.poi, entry.description,
-    entry.date, entry.entryDateTime,
-    JSON.stringify(entry.photos), JSON.stringify(entry.files), entry.id
+    entry.id, entry.location, entry.poi, entry.description, entry.date,
+    entry.entryDateTime,
+    JSON.stringify(entry.photoLinks||[]),
+    JSON.stringify(entry.fileLinks||[]),
+    `https://drive.google.com/drive/folders/${driveFolderId}`,
+    entry.id
   ];
   await gapi.client.sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `${SHEET_NAME}!A${sheetRow}:I${sheetRow}`,
+    range: `${LOG_SHEET}!A${ri+1}:J${ri+1}`,
     valueInputOption: 'RAW',
     resource: { values: [row] }
   });
 }
 
-// ════════════════════════════════════
-//  DELETE ROW FROM SHEETS
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// DELETE ROW
+// ══════════════════════════════════════
 async function deleteSheetRow(entryId) {
-  await ensureToken();
-  const meta = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
-  const sheet = meta.result.sheets.find(s => s.properties.title === SHEET_NAME);
+  await refreshToken();
+  const meta = await gapi.client.sheets.spreadsheets.get({spreadsheetId:SHEET_ID});
+  const sheet = meta.result.sheets.find(s=>s.properties.title===LOG_SHEET);
   const sheetId = sheet.properties.sheetId;
-
   const res = await gapi.client.sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: `${SHEET_NAME}!A:A`
+    spreadsheetId:SHEET_ID, range:`${LOG_SHEET}!A:A`
   });
-  const rows = res.result.values || [];
-  const rowNum = rows.findIndex(r => r[0] === entryId);
-  if (rowNum < 1) return;
-
+  const rows = res.result.values||[];
+  const ri = rows.findIndex(r=>r[0]===entryId);
+  if (ri<1) return;
   await gapi.client.sheets.spreadsheets.batchUpdate({
     spreadsheetId: SHEET_ID,
-    resource: {
-      requests: [{
-        deleteDimension: {
-          range: { sheetId, dimension:'ROWS', startIndex: rowNum, endIndex: rowNum + 1 }
-        }
-      }]
-    }
+    resource: { requests:[{deleteDimension:{range:{sheetId,dimension:'ROWS',startIndex:ri,endIndex:ri+1}}}] }
   });
 }
 
-// ════════════════════════════════════
-//  SAVE META (custom locs/pois)
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// SAVE META
+// ══════════════════════════════════════
 async function saveMeta() {
-  await ensureToken();
-  const rows = [
-    ...customLocs.map(l => ['loc', l]),
-    ...customPOIs.map(p => ['poi', p])
-  ];
-  await gapi.client.sheets.spreadsheets.values.clear({
-    spreadsheetId: SHEET_ID,
-    range: `${META_SHEET}!A:B`
-  });
+  await refreshToken();
+  const rows = [...customLocs.map(l=>['loc',l]), ...customPOIs.map(p=>['poi',p])];
+  await gapi.client.sheets.spreadsheets.values.clear({spreadsheetId:SHEET_ID, range:`${META_SHEET}!A:B`});
   if (rows.length) {
     await gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `${META_SHEET}!A1`,
-      valueInputOption: 'RAW',
-      resource: { values: rows }
+      spreadsheetId:SHEET_ID, range:`${META_SHEET}!A1`,
+      valueInputOption:'RAW', resource:{values:rows}
     });
   }
 }
 
-// ════════════════════════════════════
-//  DROPDOWNS
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// DROPDOWNS
+// ══════════════════════════════════════
 function rebuildDDs() {
-  const allLocs = [...new Set([...DEF_LOCS, ...customLocs])];
-  const allPOIs = [...new Set([...DEF_POIS, ...customPOIs])];
-
-  function fillLoc(id) {
-    const s = document.getElementById(id); if (!s) return;
-    const v = s.value;
-    s.innerHTML = '<option value="">— Select Location —</option>';
-    allLocs.forEach(l => s.add(new Option(l,l)));
-    s.add(new Option('+ Add New Location','__new__'));
-    if (v) s.value = v;
-  }
-  function fillPOI(id) {
-    const s = document.getElementById(id); if (!s) return;
-    const v = s.value;
-    s.innerHTML = '<option value="">— Select POI Type —</option>';
-    allPOIs.forEach(p => s.add(new Option(p,p)));
-    s.add(new Option('+ Add New POI Type','__new__'));
-    if (v) s.value = v;
-  }
-
-  fillLoc('selLoc'); fillLoc('eLoc');
-  fillPOI('selPOI'); fillPOI('ePOI');
-
-  // Filter dropdown
-  const fd = document.getElementById('fltPOI');
-  const fv = fd.value;
-  fd.innerHTML = '<option value="">All POI</option>';
-  allPOIs.forEach(p => fd.add(new Option(p,p)));
-  if (fv) fd.value = fv;
+  const aL = [...new Set([...DEF_LOCS,...customLocs])];
+  const aP = [...new Set([...DEF_POIS,...customPOIs])];
+  function fL(id){ const s=document.getElementById(id); if(!s)return; const v=s.value; s.innerHTML='<option value="">— Select Location —</option>'; aL.forEach(l=>s.add(new Option(l,l))); s.add(new Option('+ Add New Location','__new__')); if(v)s.value=v; }
+  function fP(id){ const s=document.getElementById(id); if(!s)return; const v=s.value; s.innerHTML='<option value="">— Select POI Type —</option>'; aP.forEach(p=>s.add(new Option(p,p))); s.add(new Option('+ Add New POI Type','__new__')); if(v)s.value=v; }
+  fL('selLoc'); fL('eLoc');
+  fP('selPOI'); fP('ePOI');
+  const fd=document.getElementById('fltPOI'); const fv=fd.value;
+  fd.innerHTML='<option value="">All POI</option>'; aP.forEach(p=>fd.add(new Option(p,p))); if(fv)fd.value=fv;
 }
+function chkOther(sId,oId){ const s=document.getElementById(sId),i=document.getElementById(oId); if(s.value==='__new__'){i.classList.add('show');i.focus();}else{i.classList.remove('show');i.value='';} }
+function getVal(sId,oId){ const s=document.getElementById(sId),i=document.getElementById(oId); return s.value==='__new__'?i.value.trim():s.value; }
 
-function chkOther(selId, othId) {
-  const s = document.getElementById(selId);
-  const i = document.getElementById(othId);
-  if (s.value === '__new__') { i.classList.add('show'); i.focus(); }
-  else { i.classList.remove('show'); i.value = ''; }
-}
-
-function getVal(selId, othId) {
-  const s = document.getElementById(selId);
-  const i = document.getElementById(othId);
-  return s.value === '__new__' ? i.value.trim() : s.value;
-}
-
-// ════════════════════════════════════
-//  PHOTOS & FILES
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// PHOTOS & FILES (store file object)
+// ══════════════════════════════════════
 function addPhotos(inp) {
-  Array.from(inp.files).forEach(f => {
+  Array.from(inp.files).forEach(file => {
     const r = new FileReader();
-    r.onload = e => { pendPhotos.push({name:f.name, dataUrl:e.target.result}); renderPPhot(); };
-    r.readAsDataURL(f);
+    r.onload = e => {
+      pendPhotos.push({ name: file.name, file, dataUrl: e.target.result, driveId: null, driveLink: null });
+      renderPPhot();
+    };
+    r.readAsDataURL(file);
   });
   inp.value = '';
 }
@@ -808,14 +757,14 @@ function renderPPhot() {
   document.getElementById('pprev').innerHTML = pendPhotos.map((p,i) =>
     `<div class="pthumb"><img src="${p.dataUrl}"><button class="premove" onclick="rmPhoto(${i})">✕</button></div>`
   ).join('');
+  document.getElementById('photoStatus').textContent = pendPhotos.length ? `${pendPhotos.length} photo(s) selected — will upload to Drive on save` : '';
 }
-function rmPhoto(i) { pendPhotos.splice(i,1); renderPPhot(); }
+function rmPhoto(i){ pendPhotos.splice(i,1); renderPPhot(); }
 
 function addFiles(inp) {
-  Array.from(inp.files).forEach(f => {
-    const r = new FileReader();
-    r.onload = e => { pendFiles.push({name:f.name, dataUrl:e.target.result, type:f.type}); renderFList(); };
-    r.readAsDataURL(f);
+  Array.from(inp.files).forEach(file => {
+    pendFiles.push({ name: file.name, file, driveId: null, driveLink: null });
+    renderFList();
   });
   inp.value = '';
 }
@@ -824,103 +773,136 @@ function renderFList() {
     `<div class="fitem"><span>📎</span><span class="fname">${f.name}</span><button class="fremove" onclick="rmFile(${i})">✕</button></div>`
   ).join('');
 }
-function rmFile(i) { pendFiles.splice(i,1); renderFList(); }
+function rmFile(i){ pendFiles.splice(i,1); renderFList(); }
 
-// ════════════════════════════════════
-//  SAVE ENTRY
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// SAVE ENTRY
+// ══════════════════════════════════════
 async function saveEntry() {
-  const loc  = getVal('selLoc','inpLocOther');
-  const poi  = getVal('selPOI','inpPOIOther');
+  const loc  = getVal('selLoc','inpLocO');
+  const poi  = getVal('selPOI','inpPOIO');
   const desc = document.getElementById('inpDesc').value.trim();
   const date = document.getElementById('inpDate').value;
+  if (!loc)  { showToast('Select / enter Location','e'); return; }
+  if (!poi)  { showToast('Select / enter POI Type','e'); return; }
+  if (!desc) { showToast('Enter Description','e'); return; }
+  if (!date) { showToast('Select Date','e'); return; }
+  if (!isSignedIn) { showToast('Please sign in first','e'); return; }
 
-  if (!loc)  { showToast('Select / enter a Location','e'); return; }
-  if (!poi)  { showToast('Select / enter a POI Type','e'); return; }
-  if (!desc) { showToast('Enter a Description','e'); return; }
-  if (!date) { showToast('Select a Date','e'); return; }
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '⏳ Uploading…';
 
   let metaDirty = false;
-  if (!DEF_LOCS.includes(loc) && !customLocs.includes(loc)) { customLocs.push(loc); localStorage.setItem('sl_locs',JSON.stringify(customLocs)); metaDirty=true; }
-  if (!DEF_POIS.includes(poi) && !customPOIs.includes(poi)) { customPOIs.push(poi); localStorage.setItem('sl_pois',JSON.stringify(customPOIs)); metaDirty=true; }
+  if (!DEF_LOCS.includes(loc)&&!customLocs.includes(loc)){ customLocs.push(loc); localStorage.setItem('sl4_locs',JSON.stringify(customLocs)); metaDirty=true; }
+  if (!DEF_POIS.includes(poi)&&!customPOIs.includes(poi)){ customPOIs.push(poi); localStorage.setItem('sl4_pois',JSON.stringify(customPOIs)); metaDirty=true; }
   if (metaDirty) rebuildDDs();
+
+  // Upload photos to Drive
+  const photoLinks = [];
+  const pb = document.getElementById('progressBar');
+  const pf = document.getElementById('progressFill');
+  const ps = document.getElementById('photoStatus');
+
+  if (pendPhotos.length > 0) {
+    pb.classList.add('show');
+    for (let i = 0; i < pendPhotos.length; i++) {
+      ps.textContent = `Uploading photo ${i+1} of ${pendPhotos.length}…`;
+      pf.style.width = Math.round((i/pendPhotos.length)*100) + '%';
+      try {
+        const ts = Date.now();
+        const ext = pendPhotos[i].name.split('.').pop();
+        const fname = `${ts}_${pendPhotos[i].name}`;
+        const r = await uploadFileToDrive(pendPhotos[i].file, fname);
+        photoLinks.push({ name: pendPhotos[i].name, link: r.link, directLink: r.directLink, id: r.id });
+      } catch(e) { console.error('Photo upload failed', e); ps.textContent = `⚠️ Photo ${i+1} upload failed`; }
+    }
+    pf.style.width = '100%';
+    pb.classList.remove('show');
+  }
+
+  // Upload files to Drive
+  const fileLinks = [];
+  for (let i = 0; i < pendFiles.length; i++) {
+    ps.textContent = `Uploading file ${i+1}…`;
+    try {
+      const r = await uploadFileToDrive(pendFiles[i].file, pendFiles[i].name);
+      fileLinks.push({ name: pendFiles[i].name, link: r.link, id: r.id });
+    } catch(e) { console.error('File upload failed', e); }
+  }
+  ps.textContent = '';
 
   const entry = {
     id: 'POI-' + Date.now(),
     location: loc, poi, description: desc, date,
     entryDateTime: new Date().toLocaleString('en-IN'),
-    photos: [...pendPhotos],
-    files:  [...pendFiles]
+    photoLinks, fileLinks
   };
 
-  entries.unshift(entry);
-  localStorage.setItem('sl_entries', JSON.stringify(entries));
-  resetForm();
-  updateBadge();
-  updateStats();
-  showToast('✅ Saved!');
-
-  if (isSignedIn) {
-    setSyncState('busy','Syncing…');
-    try {
-      await appendToSheet(entry);
-      if (metaDirty) await saveMeta();
-      setSyncState('ok','Synced');
-      showToast('☁️ Synced to Sheets!');
-    } catch(e) {
-      setSyncState('err','Sync failed');
-      showToast('Saved locally — sync failed','w');
-    }
+  // Save to Sheet
+  setSyncState('busy','Saving…');
+  saveBtn.textContent = '⏳ Saving to Sheets…';
+  try {
+    await appendToSheet(entry);
+    if (metaDirty) await saveMeta();
+    entries.unshift(entry);
+    localStorage.setItem('sl4_entries', JSON.stringify(entries));
+    resetForm();
+    updateBadge(); updateStats();
+    setSyncState('ok','Synced ✓');
+    showToast('✅ Saved & Synced to Sheets!');
+  } catch(e) {
+    console.error('Sheet save error:', e);
+    setSyncState('err','Sync failed');
+    showToast('Sheet sync failed: ' + (e.result?.error?.message || e.message || 'unknown'), 'e');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = '💾 SAVE & SYNC TO SHEETS';
   }
 }
 
 function resetForm() {
-  ['selLoc','selPOI'].forEach(id => document.getElementById(id).value='');
-  ['inpLocOther','inpPOIOther'].forEach(id => { const e=document.getElementById(id); e.value=''; e.classList.remove('show'); });
+  ['selLoc','selPOI'].forEach(id=>document.getElementById(id).value='');
+  ['inpLocO','inpPOIO'].forEach(id=>{ const e=document.getElementById(id); e.value=''; e.classList.remove('show'); });
   document.getElementById('inpDesc').value='';
   setToday();
   pendPhotos=[]; pendFiles=[];
   renderPPhot(); renderFList();
 }
 
-// ════════════════════════════════════
-//  RENDER
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════
 function renderEntries() {
   if (!isSignedIn) return;
-  const q   = document.getElementById('searchBox').value.toLowerCase();
-  const flt = document.getElementById('fltPOI').value;
-  const list = entries.filter(e => {
-    const ms = !q || [e.location,e.poi,e.description,e.id].some(s=>(s||'').toLowerCase().includes(q));
-    const mf = !flt || e.poi===flt;
-    return ms && mf;
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const f = document.getElementById('fltPOI').value;
+  const list = entries.filter(e=>{
+    const ms = !q||[e.location,e.poi,e.description,e.id].some(s=>(s||'').toLowerCase().includes(q));
+    return ms && (!f||e.poi===f);
   });
-
   const c = document.getElementById('eContainer');
-  if (!list.length) { c.innerHTML = `<div class="empty"><div class="icon">📭</div>No entries found.</div>`; return; }
-  c.innerHTML = viewMode==='card' ? list.map((e,i)=>renderCard(e, entries.indexOf(e))).join('') : renderTable(list);
+  if (!list.length){ c.innerHTML=`<div class="empty"><div class="icon">📭</div>No entries found.</div>`; return; }
+  c.innerHTML = viewMode==='card' ? list.map(e=>renderCard(e,entries.indexOf(e))).join('') : renderTable(list);
 }
 
-function bCls(poi) {
-  const m = {'Defect':'Defect','Incident':'Incident','Rectification Work':'Rectification','Note':'Note','Information':'Information'};
-  return 'b-'+(m[poi]||'Other');
-}
-function cCls(poi) {
-  const m = {'Defect':'Defect','Incident':'Incident','Rectification Work':'Rectification','Note':'Note','Information':'Information'};
-  return 'cl-'+(m[poi]||'Other');
-}
+function bCls(p){ const m={'Defect':'Defect','Incident':'Incident','Rectification Work':'Rectification','Note':'Note','Information':'Information'}; return 'b-'+(m[p]||'Other'); }
+function cCls(p){ const m={'Defect':'Defect','Incident':'Incident','Rectification Work':'Rectification','Note':'Note','Information':'Information'}; return 'cl-'+(m[p]||'Other'); }
 
-function renderCard(e, idx) {
-  const photos = (e.photos||[]).map(p=>`<div class="cphoto" onclick="openLB('${p.dataUrl}')"><img src="${p.dataUrl}" loading="lazy"></div>`).join('');
-  const files  = (e.files||[]).map(f=>`<a class="cfile-link" href="${f.dataUrl}" download="${f.name}">📎 ${f.name}</a>`).join('');
-  const dt = e.entryDateTime || '';
+function renderCard(e,idx) {
+  const photos = (e.photoLinks||[]).map(p=>
+    `<div class="cphoto" onclick="openLB('${p.directLink||p.link}')"><img src="${p.directLink||p.link}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2256%22 height=%2256%22%3E%3Crect width=%2256%22 height=%2256%22 fill=%22%231c2538%22/%3E%3Ctext x=%2228%22 y=%2232%22 text-anchor=%22middle%22 fill=%22%236e82a8%22 font-size=%2218%22%3E📷%3C/text%3E%3C/svg%3E'"></div>`
+  ).join('');
+  const files = (e.fileLinks||[]).map(f=>
+    `<a class="cfile-link" href="${f.link}" target="_blank">📎 ${f.name}</a>`
+  ).join('');
   return `<div class="card ${cCls(e.poi)}">
     <div class="chdr"><span class="pbadge ${bCls(e.poi)}">${e.poi}</span><span class="cid">${e.id}</span></div>
     <div class="cloc">📍 ${e.location}</div>
     <div class="cdesc">${e.description}</div>
     ${photos?`<div class="cphotos">${photos}</div>`:''}
     ${files?`<div class="cfiles">${files}</div>`:''}
-    <div class="cmeta"><span>📅 ${e.date}</span><span>🕐 ${dt}</span></div>
+    <div class="cmeta"><span>📅 ${e.date}</span><span>🕐 ${e.entryDateTime}</span></div>
     <div class="cacts">
       <button class="obtn" style="font-size:12px;padding:5px 10px" onclick="openEdit(${idx})">✏️ Edit</button>
       <button class="btnd" style="font-size:12px;padding:5px 10px" onclick="delEntry(${idx})">🗑️</button>
@@ -929,15 +911,15 @@ function renderCard(e, idx) {
 }
 
 function renderTable(list) {
-  const rows = list.map(e => {
-    const idx = entries.indexOf(e);
+  const rows = list.map(e=>{
+    const idx=entries.indexOf(e);
     return `<tr>
       <td style="font-family:var(--mono);font-size:9px;color:var(--text2)">${e.id}</td>
       <td>${e.location}</td>
       <td><span class="pbadge ${bCls(e.poi)}">${e.poi}</span></td>
       <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description}</td>
       <td>${e.date}</td>
-      <td style="color:var(--text2)">${(e.photos||[]).length}📸 ${(e.files||[]).length}📎</td>
+      <td style="color:var(--text2)">${(e.photoLinks||[]).length}📸 ${(e.fileLinks||[]).length}📎</td>
       <td><div class="tdacts">
         <button class="obtn" style="font-size:11px;padding:4px 8px" onclick="openEdit(${idx})">✏️</button>
         <button class="btnd" style="font-size:11px;padding:4px 7px" onclick="delEntry(${idx})">🗑️</button>
@@ -947,179 +929,155 @@ function renderTable(list) {
   return `<div class="twrap"><table><thead><tr><th>ID</th><th>Location</th><th>POI</th><th>Desc</th><th>Date</th><th>Files</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-function setView(m) {
-  viewMode=m;
-  document.getElementById('vcard').classList.toggle('on',m==='card');
-  document.getElementById('vtable').classList.toggle('on',m==='table');
-  renderEntries();
-}
+function setView(m){ viewMode=m; document.getElementById('vcard').classList.toggle('on',m==='card'); document.getElementById('vtable').classList.toggle('on',m==='table'); renderEntries(); }
 
-// ════════════════════════════════════
-//  DELETE
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// DELETE
+// ══════════════════════════════════════
 async function delEntry(idx) {
   if (!confirm('Delete this entry?')) return;
-  const entryId = entries[idx].id;
+  const id = entries[idx].id;
   entries.splice(idx,1);
-  localStorage.setItem('sl_entries', JSON.stringify(entries));
+  localStorage.setItem('sl4_entries',JSON.stringify(entries));
   renderEntries(); updateBadge(); updateStats();
-
   if (isSignedIn) {
     setSyncState('busy','Deleting…');
-    try { await deleteSheetRow(entryId); setSyncState('ok','Synced'); showToast('Deleted'); }
-    catch(e) { setSyncState('err','Sync err'); showToast('Deleted locally — sheet sync failed','w'); }
-  } else showToast('Entry deleted');
+    try { await deleteSheetRow(id); setSyncState('ok','Synced ✓'); showToast('Deleted'); }
+    catch(e){ setSyncState('err','Sync err'); showToast('Deleted locally — sheet sync failed','w'); }
+  }
 }
 
-// ════════════════════════════════════
-//  EDIT
-// ════════════════════════════════════
+// ══════════════════════════════════════
+// EDIT
+// ══════════════════════════════════════
 function openEdit(idx) {
-  editIdx = idx;
-  const e = entries[idx];
-  rebuildDDs();
-
-  const al = [...new Set([...DEF_LOCS,...customLocs])];
-  const ap = [...new Set([...DEF_POIS,...customPOIs])];
-
-  const ls = document.getElementById('eLoc');
-  if (al.includes(e.location)) { ls.value=e.location; }
-  else { ls.value='__new__'; document.getElementById('eLocOther').value=e.location; document.getElementById('eLocOther').classList.add('show'); }
-
-  const ps = document.getElementById('ePOI');
-  if (ap.includes(e.poi)) { ps.value=e.poi; }
-  else { ps.value='__new__'; document.getElementById('ePOIOther').value=e.poi; document.getElementById('ePOIOther').classList.add('show'); }
-
-  document.getElementById('eDesc').value = e.description;
-  document.getElementById('eDate').value = e.date;
+  editIdx=idx; const e=entries[idx]; rebuildDDs();
+  const aL=[...new Set([...DEF_LOCS,...customLocs])];
+  const aP=[...new Set([...DEF_POIS,...customPOIs])];
+  const ls=document.getElementById('eLoc');
+  if(aL.includes(e.location)){ls.value=e.location;}else{ls.value='__new__';document.getElementById('eLocO').value=e.location;document.getElementById('eLocO').classList.add('show');}
+  const ps=document.getElementById('ePOI');
+  if(aP.includes(e.poi)){ps.value=e.poi;}else{ps.value='__new__';document.getElementById('ePOIO').value=e.poi;document.getElementById('ePOIO').classList.add('show');}
+  document.getElementById('eDesc').value=e.description;
+  document.getElementById('eDate').value=e.date;
   document.getElementById('editModal').classList.add('show');
 }
 
 async function saveEdit() {
-  const loc = getVal('eLoc','eLocOther');
-  const poi = getVal('ePOI','ePOIOther');
-  if (!loc||!poi) { showToast('Fill all fields','e'); return; }
-
-  let metaDirty=false;
-  if (!DEF_LOCS.includes(loc)&&!customLocs.includes(loc)) { customLocs.push(loc); localStorage.setItem('sl_locs',JSON.stringify(customLocs)); metaDirty=true; }
-  if (!DEF_POIS.includes(poi)&&!customPOIs.includes(poi)) { customPOIs.push(poi); localStorage.setItem('sl_pois',JSON.stringify(customPOIs)); metaDirty=true; }
-  if (metaDirty) rebuildDDs();
-
-  entries[editIdx].location    = loc;
-  entries[editIdx].poi         = poi;
-  entries[editIdx].description = document.getElementById('eDesc').value.trim();
-  entries[editIdx].date        = document.getElementById('eDate').value;
-  localStorage.setItem('sl_entries', JSON.stringify(entries));
-
-  closeModal();
-  renderEntries(); updateStats();
-
-  if (isSignedIn) {
-    setSyncState('busy','Syncing…');
-    try {
-      await updateSheetRow(entries[editIdx]);
-      if (metaDirty) await saveMeta();
-      setSyncState('ok','Synced');
-      showToast('✅ Updated & Synced');
-    } catch(e) { setSyncState('err','Sync err'); showToast('Updated locally — sync failed','w'); }
-  } else showToast('Updated locally');
+  const loc=getVal('eLoc','eLocO'), poi=getVal('ePOI','ePOIO');
+  if(!loc||!poi){showToast('Fill all fields','e');return;}
+  let md=false;
+  if(!DEF_LOCS.includes(loc)&&!customLocs.includes(loc)){customLocs.push(loc);localStorage.setItem('sl4_locs',JSON.stringify(customLocs));md=true;}
+  if(!DEF_POIS.includes(poi)&&!customPOIs.includes(poi)){customPOIs.push(poi);localStorage.setItem('sl4_pois',JSON.stringify(customPOIs));md=true;}
+  if(md)rebuildDDs();
+  entries[editIdx].location=loc; entries[editIdx].poi=poi;
+  entries[editIdx].description=document.getElementById('eDesc').value.trim();
+  entries[editIdx].date=document.getElementById('eDate').value;
+  localStorage.setItem('sl4_entries',JSON.stringify(entries));
+  closeModal(); renderEntries(); updateStats();
+  if(isSignedIn){
+    setSyncState('busy','Saving…');
+    try{ await updateSheetRow(entries[editIdx]); if(md)await saveMeta(); setSyncState('ok','Synced ✓'); showToast('✅ Updated & Synced'); }
+    catch(e){ setSyncState('err','Sync err'); showToast('Updated locally — sync failed','w'); }
+  }
 }
 
-function closeModal() {
+function closeModal(){
   document.getElementById('editModal').classList.remove('show');
-  ['eLocOther','ePOIOther'].forEach(id => { const e=document.getElementById(id); e.value=''; e.classList.remove('show'); });
+  ['eLocO','ePOIO'].forEach(id=>{const e=document.getElementById(id);e.value='';e.classList.remove('show');});
   editIdx=-1;
 }
 
-// ════════════════════════════════════
-//  LIGHTBOX
-// ════════════════════════════════════
-function openLB(src) { document.getElementById('lbImg').src=src; document.getElementById('lb').classList.add('show'); }
-function closeLB()   { document.getElementById('lb').classList.remove('show'); }
+// ══════════════════════════════════════
+// LIGHTBOX
+// ══════════════════════════════════════
+function openLB(src){document.getElementById('lbImg').src=src;document.getElementById('lb').classList.add('show');}
+function closeLB(){document.getElementById('lb').classList.remove('show');}
 
-// ════════════════════════════════════
-//  EXPORT
-// ════════════════════════════════════
-function exportXLSX() {
-  if (!entries.length) { showToast('No entries','e'); return; }
-  const wb = XLSX.utils.book_new();
-  const data = [['ID','Location','POI Type','Description','Date','Entry Date-Time','Photos','Files']];
-  entries.forEach(e => data.push([e.id,e.location,e.poi,e.description,e.date,e.entryDateTime,
-    (e.photos||[]).map(p=>p.name).join(', '),(e.files||[]).map(f=>f.name).join(', ')]));
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [10,14,18,40,12,22,25,25].map(w=>({wch:w}));
+// ══════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════
+function exportXLSX(){
+  if(!entries.length){showToast('No entries','e');return;}
+  const wb=XLSX.utils.book_new();
+  const data=[['ID','Location','POI Type','Description','Date','Entry Date-Time','Photo Links','File Links']];
+  entries.forEach(e=>data.push([e.id,e.location,e.poi,e.description,e.date,e.entryDateTime,
+    (e.photoLinks||[]).map(p=>p.link).join('\n'),(e.fileLinks||[]).map(f=>f.link).join('\n')]));
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[10,14,18,40,12,22,40,40].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,'POI Log');
   XLSX.writeFile(wb,'civilappdata_poi_log.xlsx');
   showToast('📊 Excel downloaded!');
 }
 
-function exportCSV() {
-  if (!entries.length) { showToast('No entries','e'); return; }
-  const hdr = ['ID','Location','POI Type','Description','Date','Entry Date-Time','Photos','Files'];
-  const rows = entries.map(e=>[e.id,`"${e.location}"`,`"${e.poi}"`,`"${e.description.replace(/"/g,'""')}"`,
-    e.date,`"${e.entryDateTime}"`,`"${(e.photos||[]).map(p=>p.name).join('; ')}"`,
-    `"${(e.files||[]).map(f=>f.name).join('; ')}"`].join(','));
-  const blob = new Blob([[hdr.join(','),...rows].join('\n')],{type:'text/csv'});
-  const a = document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download='civilappdata_poi_log.csv'; a.click();
+function exportCSV(){
+  if(!entries.length){showToast('No entries','e');return;}
+  const hdr=['ID','Location','POI Type','Description','Date','Entry Date-Time','Photo Links','File Links'];
+  const rows=entries.map(e=>[e.id,`"${e.location}"`,`"${e.poi}"`,`"${(e.description||'').replace(/"/g,'""')}"`,
+    e.date,`"${e.entryDateTime}"`,`"${(e.photoLinks||[]).map(p=>p.link).join(' | ')}"`,
+    `"${(e.fileLinks||[]).map(f=>f.link).join(' | ')}"`].join(','));
+  const blob=new Blob([[hdr.join(','),...rows].join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='civilappdata_poi_log.csv'; a.click();
   showToast('📄 CSV downloaded!');
 }
 
-function openSheet() {
-  window.open(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`, '_blank');
+function openSheet(){ window.open(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`,'_blank'); }
+function openDriveFolder(){
+  if(driveFolderId) window.open(`https://drive.google.com/drive/folders/${driveFolderId}`,'_blank');
+  else showToast('Sign in first to access Drive folder','w');
 }
 
-function clearCache() {
-  if (!confirm('Clear local cache? Sheets data unaffected.')) return;
-  entries=[]; localStorage.setItem('sl_entries','[]');
-  updateBadge(); updateStats(); renderEntries();
-  showToast('Local cache cleared');
+function clearCache(){
+  if(!confirm('Clear local cache? Sheets & Drive data unaffected.'))return;
+  entries=[]; localStorage.setItem('sl4_entries','[]');
+  updateBadge(); updateStats(); renderEntries(); showToast('Local cache cleared');
 }
 
-// ════════════════════════════════════
-//  TABS
-// ════════════════════════════════════
-function goTab(t) {
-  ['add','view','export'].forEach(x => {
+// ══════════════════════════════════════
+// TABS & HELPERS
+// ══════════════════════════════════════
+function goTab(t){
+  ['add','view','export'].forEach(x=>{
     document.getElementById('pnl-'+x).classList.toggle('on',x===t);
     document.getElementById('t-'+x).classList.toggle('on',x===t);
   });
-  if (t==='view')   { if (!isSignedIn) { document.getElementById('viewSI').style.display='flex'; document.getElementById('viewContent').style.display='none'; } else renderEntries(); }
-  if (t==='export') updateStats();
+  if(t==='view'){ if(!isSignedIn){document.getElementById('viewSI').style.display='flex';document.getElementById('viewContent').style.display='none';}else renderEntries(); }
+  if(t==='export')updateStats();
 }
 
-// ════════════════════════════════════
-//  HELPERS
-// ════════════════════════════════════
-function setToday() { document.getElementById('inpDate').value = new Date().toISOString().split('T')[0]; }
-
-function startClock() {
-  const el = document.getElementById('clock');
-  const tick = () => el.textContent = new Date().toLocaleDateString('en-IN') + '  ' + new Date().toLocaleTimeString('en-IN');
-  tick(); setInterval(tick,1000);
+function setToday(){ document.getElementById('inpDate').value=new Date().toISOString().split('T')[0]; }
+function startClock(){ const el=document.getElementById('clock'); const t=()=>el.textContent=new Date().toLocaleDateString('en-IN')+'  '+new Date().toLocaleTimeString('en-IN'); t(); setInterval(t,1000); }
+function updateBadge(){ document.getElementById('cntBadge').textContent=entries.length; }
+function updateStats(){
+  document.getElementById('stTotal').textContent=entries.length;
+  document.getElementById('stDef').textContent=entries.filter(e=>e.poi==='Defect').length;
+  document.getElementById('stInc').textContent=entries.filter(e=>e.poi==='Incident').length;
+  document.getElementById('stRec').textContent=entries.filter(e=>e.poi==='Rectification Work').length;
+}
+function setSyncState(s,l){
+  const p=document.getElementById('spill'),d=document.getElementById('sdot'),lb=document.getElementById('slabel');
+  p.className='spill '+s; d.className='sdot'+(s==='busy'?' pulse':''); lb.textContent=l;
+}
+function showToast(msg,type=''){
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.className='toast'+(type?' '+type:''); t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
 }
 
-function updateBadge() { document.getElementById('cntBadge').textContent = entries.length; }
-
-function updateStats() {
-  document.getElementById('stTotal').textContent = entries.length;
-  document.getElementById('stDef').textContent   = entries.filter(e=>e.poi==='Defect').length;
-  document.getElementById('stInc').textContent   = entries.filter(e=>e.poi==='Incident').length;
-  document.getElementById('stRec').textContent   = entries.filter(e=>e.poi==='Rectification Work').length;
-}
-
-function setSyncState(state, label) {
-  const p=document.getElementById('spill'), d=document.getElementById('sdot'), l=document.getElementById('slabel');
-  p.className='spill '+state;
-  d.className='sdot'+(state==='busy'?' pulse':'');
-  l.textContent=label;
-}
-
-function showToast(msg, type='') {
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className='toast'+(type?' '+type:'');
-  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800);
-}
+// GIS loads async — init when ready
+window.addEventListener('load', () => {
+  const checkGIS = setInterval(() => {
+    if (typeof google !== 'undefined' && google.accounts) {
+      clearInterval(checkGIS);
+      if (gapiReady_) maybeInitGIS();
+      else {
+        const checkGAPI = setInterval(() => {
+          if (gapiReady_) { clearInterval(checkGAPI); maybeInitGIS(); }
+        }, 200);
+      }
+    }
+  }, 200);
+});
 </script>
 </body>
 </html>
